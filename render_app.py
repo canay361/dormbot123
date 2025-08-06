@@ -113,25 +113,36 @@ def status():
             "url": MONITOR_URL,
             "interval": CHECK_INTERVAL,
             "telegram_configured": bool(BOT_TOKEN and CHAT_ID)
+        },
+        "debug": {
+            "bot_token_exists": bool(BOT_TOKEN),
+            "chat_id_exists": bool(CHAT_ID),
+            "bot_token_length": len(BOT_TOKEN) if BOT_TOKEN else 0,
+            "chat_id_value": CHAT_ID if CHAT_ID else "None"
         }
     })
 
-@app.route('/start', methods=['POST'])
+@app.route('/start', methods=['POST', 'GET'])
 def start_monitoring():
     """Start monitoring"""
     global monitor_thread, is_monitoring
     
     if is_monitoring:
-        return jsonify({"message": "Already monitoring"}), 400
+        return jsonify({"message": "Already monitoring"})
     
     if not BOT_TOKEN or not CHAT_ID:
-        return jsonify({"error": "Telegram not configured"}), 400
+        return jsonify({
+            "error": "Telegram not configured", 
+            "bot_token": bool(BOT_TOKEN),
+            "chat_id": bool(CHAT_ID),
+            "help": "Set BOT_TOKEN and CHAT_ID environment variables in Render dashboard"
+        })
     
     is_monitoring = True
     monitor_thread = threading.Thread(target=monitor_loop, daemon=True)
     monitor_thread.start()
     
-    return jsonify({"message": "Monitoring started"})
+    return jsonify({"message": "Monitoring started successfully"})
 
 @app.route('/stop', methods=['POST'])
 def stop_monitoring():
@@ -163,6 +174,7 @@ def auto_start():
 
 # Call auto_start when app is created
 with app.app_context():
+    add_log(f"App starting - BOT_TOKEN: {bool(BOT_TOKEN)}, CHAT_ID: {bool(CHAT_ID)}")
     auto_start()
 
 if __name__ == '__main__':
